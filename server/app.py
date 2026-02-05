@@ -5,6 +5,7 @@ from flask_session import Session
 import os
 from dotenv import load_dotenv
 import boto3
+from controllers import auth
 
 load_dotenv()
 
@@ -31,28 +32,42 @@ def home():
 
 @app.route("/api/login", methods=["POST"])
 def login():
-    data = request.json
-    username = data.get("username")
-    password = data.get("password")
+    if session.get("username"):
+        return jsonify({"success": True , "message": "Already logged in"}), 200
+    
+    data = request.get_json()
+    resp = auth.Login(data)
 
-    if username == "admin" and password == "password":
-        session.clear()  
-        session["user"] = username
-        return jsonify({"message": "Login successful"}), 200
+    if resp["success"]:
+        return jsonify({"success" : True , "message": resp["message"]}), resp["code"]
+    return jsonify({"success": False, "error": resp["error"]}), resp["code"]
 
-    return jsonify({"message": "Invalid credentials"}), 401
+@app.route("/api/register", methods=["POST"])
+def register():
+    if session.get("username"):
+        return jsonify({"success": True , "message": "Already logged in"}), 200
+    
+    data = request.get_json()
+    
+    resp = auth.Register(data)
+    
+    if resp["success"]:
+        return jsonify({"success" : True , "message": resp["message"]}), resp["code"]
+    return jsonify({"success": False, "error": resp["error"]}), resp["code"]
+    
+    
+    return jsonify(resp)
 
 
-@app.route("/set")
-def set_session():
+
+@app.route("/api/logout" , methods=["POST"])
+def logout():
+    if not session.get("username"):
+        return jsonify({"success": False, "message": "No active session"}), 400
+    
     session.clear()
-    session["user"] = "LambdaUser"
-    return "Session Saved"
+    return jsonify({"success": True, "message": "Logged out successfully"}), 200
 
-
-@app.route("/get")
-def get_session():
-    return jsonify({"session_user": session.get("user", "No session")})
 
 
 handler = Mangum(app)
