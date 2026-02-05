@@ -1,0 +1,5 @@
+venv/
+.env
+__pycache__/
+zappa_settings.json
+.zappaignore
