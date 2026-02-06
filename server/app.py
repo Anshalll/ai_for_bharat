@@ -5,7 +5,7 @@ from flask_session import Session
 import os
 from dotenv import load_dotenv
 import boto3
-from controllers import auth
+from controllers import auth , User
 
 load_dotenv()
 
@@ -28,7 +28,15 @@ CORS(app, origins="*")
 
 @app.route("/")
 def home():
-    return "Hello Lambda"
+    if not session.get("username"):
+        return jsonify({"success": False , "error": "Not logged in" , "code": 401} )
+    resp = User.getuserinfo()
+
+    if resp["success"]:
+        
+        return jsonify({"success": True, "message": resp["message"] , "code": resp["code"] , "additional": resp["additional"]})
+    
+    return jsonify({"success": False , "error": resp["error"] , "code": 400} )
 
 @app.route("/api/login", methods=["POST"])
 def login():
@@ -55,8 +63,6 @@ def register():
         return jsonify({"success" : True , "message": resp["message"]}), resp["code"]
     return jsonify({"success": False, "error": resp["error"]}), resp["code"]
     
-    
-    return jsonify(resp)
 
 
 
