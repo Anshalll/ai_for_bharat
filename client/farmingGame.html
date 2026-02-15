@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Market-to-Fork - Supply Chain Management</title>
+    <style>
+        @import url("farmingGame.css");
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">MARKET-TO-FORK</div>
+            <div class="stats">
+                <div class="stat-item">
+                    <span class="stat-label">Cash:</span>
+                    <span class="stat-value">$<span id="cash">10000</span></span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Rating:</span>
+                    <span class="stat-value"><span id="rating">3.0</span>★</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">CO₂ Credits:</span>
+                    <span class="stat-value"><span id="carbon">0</span></span>
+                </div>
+                <button class="help-btn" onclick="openManual()">📖 MANUAL</button>
+            </div>
+        </header>
+        
+        <div class="game-grid">
+            <!-- Left panel: Contracts -->
+            <div class="panel">
+                <div class="panel-title">📋 Available Contracts</div>
+                <div class="contract-list" id="contractList"></div>
+                <div class="action-buttons">
+                    <button class="btn btn-primary" id="acceptBtn" disabled>Accept Contract</button>
+                </div>
+                
+                <div id="workflowStatus" style="margin-top: 1rem; padding: 0.75rem; background: rgba(0, 240, 255, 0.05); border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.9rem; display: none;">
+                    <div style="color: var(--accent-cyan); font-weight: 600; margin-bottom: 0.5rem;">📋 Workflow Status</div>
+                    <div id="statusText" style="color: var(--text-secondary);"></div>
+                </div>
+            </div>
+            
+            <!-- Center panel: Map -->
+            <div class="panel">
+                <div class="panel-title">🗺️ Regional Map</div>
+                <div class="map-container">
+                    <svg class="map-svg" id="mapSvg" viewBox="0 0 600 400">
+                        <!-- Background -->
+                        <defs>
+                            <radialGradient id="mapGrad">
+                                <stop offset="0%" style="stop-color:rgba(0,240,255,0.1);stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:rgba(18,24,41,1);stop-opacity:1" />
+                            </radialGradient>
+                        </defs>
+                        <rect width="600" height="400" fill="url(#mapGrad)"/>
+                        
+                        <!-- Routes will be drawn here -->
+                        <g id="routes"></g>
+                        
+                        <!-- Locations -->
+                        <g id="locations">
+                            <!-- Farms -->
+                            <g class="location-marker" data-type="farm" data-x="100" data-y="100">
+                                <circle cx="100" cy="100" r="15" fill="#00ff88" opacity="0.2"/>
+                                <circle cx="100" cy="100" r="8" fill="#00ff88"/>
+                                <text x="100" y="130" text-anchor="middle" fill="#00ff88" font-size="12">🌾 Farm A</text>
+                            </g>
+                            <g class="location-marker" data-type="farm" data-x="500" data-y="80">
+                                <circle cx="500" cy="80" r="15" fill="#00ff88" opacity="0.2"/>
+                                <circle cx="500" cy="80" r="8" fill="#00ff88"/>
+                                <text x="500" y="110" text-anchor="middle" fill="#00ff88" font-size="12">🥬 Farm B</text>
+                            </g>
+                            
+                            <!-- Warehouse -->
+                            <g class="location-marker" data-type="warehouse" data-x="300" data-y="200">
+                                <circle cx="300" cy="200" r="20" fill="#00f0ff" opacity="0.2"/>
+                                <circle cx="300" cy="200" r="10" fill="#00f0ff"/>
+                                <text x="300" y="235" text-anchor="middle" fill="#00f0ff" font-size="14" font-weight="bold">🏭 HQ</text>
+                            </g>
+                            
+                            <!-- Retailers -->
+                            <g class="location-marker" data-type="retailer" data-x="150" data-y="320">
+                                <circle cx="150" cy="320" r="15" fill="#ff6b35" opacity="0.2"/>
+                                <circle cx="150" cy="320" r="8" fill="#ff6b35"/>
+                                <text x="150" y="350" text-anchor="middle" fill="#ff6b35" font-size="12">🏪 Store 1</text>
+                            </g>
+                            <g class="location-marker" data-type="retailer" data-x="450" data-y="300">
+                                <circle cx="450" cy="300" r="15" fill="#ff6b35" opacity="0.2"/>
+                                <circle cx="450" cy="300" r="8" fill="#ff6b35"/>
+                                <text x="450" y="330" text-anchor="middle" fill="#ff6b35" font-size="12">🍽️ Restaurant</text>
+                            </g>
+                        </g>
+                        
+                        <!-- Vehicles will be drawn here -->
+                        <g id="vehicles"></g>
+                    </svg>
+                </div>
+                
+                <div id="newsContainer"></div>
+            </div>
+            
+            <!-- Right panel: Fleet & Upgrades -->
+            <div class="panel">
+                <div class="panel-title">🚛 Fleet Management</div>
+                <div style="margin-bottom: 1rem; padding: 0.5rem; background: rgba(0, 240, 255, 0.05); border-radius: 4px; font-size: 0.9rem;">
+                    <span style="color: var(--text-secondary);">Active Deliveries: </span>
+                    <span style="color: var(--accent-green); font-weight: 700;" id="activeDeliveryCount">0</span>
+                    <span style="color: var(--text-secondary);"> / 3</span>
+                </div>
+                <div class="fleet-list" id="fleetList"></div>
+                
+                <div class="action-buttons">
+                    <button class="btn btn-primary" id="dispatchBtn" disabled>Dispatch</button>
+                    <button class="btn btn-secondary" id="processBtn" disabled>Process</button>
+                </div>
+                
+                <div class="panel-title" style="margin-top: 2rem;">⚡ Upgrades</div>
+                <div class="upgrade-grid" id="upgradeGrid"></div>
+            </div>
+        </div>
+        
+        <!-- Manual/Guide Modal -->
+        <div class="modal-overlay" id="manualModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title">📖 PLAYER'S MANUAL</div>
+                    <button class="modal-close" onclick="closeManual()">×</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Quick Start -->
+                    <div class="guide-section">
+                        <h2>🚀 Quick Start Guide</h2>
+                        <p>Welcome to Market-to-Fork! You're the CEO of a cutting-edge supply chain operation in 2026. Your mission: bridge the gap between farms and consumers while maintaining efficiency, quality, and sustainability.</p>
+                        
+                        <div class="info-box success">
+                            <strong>🎯 Your Goal:</strong> Build a profitable logistics empire by accepting contracts, optimizing delivery routes, and upgrading your infrastructure. Balance the <strong>Golden Triangle</strong> of Efficiency, Quality, and Sustainability to succeed!
+                        </div>
+                        
+                        <h3>Basic Workflow</h3>
+                        <ul class="guide-list">
+                            <li><strong>Step 1:</strong> Select a contract from the left panel (look for high rewards and manageable distances)</li>
+                            <li><strong>Step 2:</strong> Choose an available vehicle from your fleet (match vehicle to cargo needs)</li>
+                            <li><strong>Step 3:</strong> Optional - Click "Process" to convert raw goods for higher profits</li>
+                            <li><strong>Step 4:</strong> Click "Dispatch" to send your vehicle on delivery</li>
+                            <li><strong>Step 5:</strong> Watch the delivery progress on the map and collect your reward!</li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Core Mechanics -->
+                    <div class="guide-section">
+                        <h2>⚙️ Core Mechanics</h2>
+                        
+                        <h3>🍓 Freshness & Perishability</h3>
+                        <p>Every crop has a <strong>Freshness Value</strong> that decays over time using the formula: F(t) = 100 × e<sup>-kt</sup></p>
+                        <ul class="guide-list">
+                            <li><strong>Strawberries</strong> decay fastest - deliver quickly!</li>
+                            <li><strong>Potatoes</strong> and <strong>Wheat</strong> last longer</li>
+                            <li>Watch the green freshness bar below each contract</li>
+                            <li>Higher freshness = higher reward when delivered</li>
+                        </ul>
+                        
+                        <div class="info-box warning">
+                            <strong>⚠️ Warning:</strong> If freshness drops below 50%, your rating will decrease! Late or spoiled deliveries hurt your reputation and limit access to premium contracts.
+                        </div>
+                        
+                        <h3>⭐ Rating System (The "Fork" Rating)</h3>
+                        <p>Your reputation score ranges from 1-5 stars:</p>
+                        <ul class="guide-list">
+                            <li><strong>High freshness (>80%)</strong> → Rating increases</li>
+                            <li><strong>Low freshness (<50%)</strong> → Rating decreases significantly</li>
+                            <li>Higher ratings unlock better contracts with premium buyers</li>
+                            <li>Maintain 4+ stars to access high-end restaurants and retailers</li>
+                        </ul>
+                        
+                        <h3>⚙️ Processing for Profit</h3>
+                        <p>Some raw goods can be processed into higher-value products:</p>
+                        <table class="stats-table">
+                            <thead>
+                                <tr>
+                                    <th>Raw Material</th>
+                                    <th>Processed Product</th>
+                                    <th>Value Multiplier</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>🥛 Milk</td>
+                                    <td>🧀 Cheese</td>
+                                    <td>1.5x base value</td>
+                                </tr>
+                                <tr>
+                                    <td>🌾 Wheat</td>
+                                    <td>🍞 Flour</td>
+                                    <td>1.5x base value</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p><strong>Tip:</strong> Processing takes time but significantly increases margins. With the Solar Processing Hub upgrade, this multiplier increases to 2.25x!</p>
+                    </div>
+                    
+                    <!-- Fleet Management -->
+                    <div class="guide-section">
+                        <h2>🚛 Fleet Management</h2>
+                        <p>Each vehicle has unique strengths and weaknesses:</p>
+                        
+                        <table class="stats-table">
+                            <thead>
+                                <tr>
+                                    <th>Vehicle</th>
+                                    <th>Speed</th>
+                                    <th>Capacity</th>
+                                    <th>Decay Rate</th>
+                                    <th>Best For</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>🚛 Cryo-EV Truck</td>
+                                    <td>0.7x (Slow)</td>
+                                    <td>100kg</td>
+                                    <td>0.3x (Excellent)</td>
+                                    <td>Long distances, perishables, carbon credits</td>
+                                </tr>
+                                <tr>
+                                    <td>🚐 Refrigerated Van</td>
+                                    <td>1.0x (Normal)</td>
+                                    <td>50kg</td>
+                                    <td>0.5x (Good)</td>
+                                    <td>Balanced medium-range deliveries</td>
+                                </tr>
+                                <tr>
+                                    <td>🚁 Agri-Drone</td>
+                                    <td>1.5x (Fast)</td>
+                                    <td>20kg</td>
+                                    <td>0.8x (Poor)</td>
+                                    <td>Short urgent deliveries, bypassing traffic</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <div class="info-box">
+                            <strong>💡 Pro Tip:</strong> Match vehicle to cargo! Use the Cryo-EV for strawberries and milk (high decay), the drone for last-minute orders, and the van for everything else.
+                        </div>
+                    </div>
+                    
+                    <!-- Dynamic Events -->
+                    <div class="guide-section">
+                        <h2>📰 Dynamic Market Events</h2>
+                        <p>Random news events trigger every 30 seconds, affecting your business:</p>
+                        
+                        <ul class="guide-list">
+                            <li><strong>⛽ Fuel Spike in Europe</strong> - Increases logistics costs by 15%</li>
+                            <li><strong>🫘 Vegan Festival in Neo-Delhi</strong> - Organic soy demand up 40%, higher prices!</li>
+                            <li><strong>🌧️ Monsoon Delay</strong> - Grain prices increase 25%</li>
+                            <li><strong>🌡️ Heat Wave Warning</strong> - All perishables decay 30% faster</li>
+                            <li><strong>🌱 Green Subsidy Program</strong> - Bonus +50 carbon credits for EV use</li>
+                        </ul>
+                        
+                        <p>Events last for 60 seconds. Adapt your strategy to capitalize on opportunities or mitigate threats!</p>
+                    </div>
+                    
+                    <!-- Upgrades -->
+                    <div class="guide-section">
+                        <h2>⚡ Upgrades & Infrastructure</h2>
+                        <p>Invest in upgrades to gain competitive advantages:</p>
+                        
+                        <h3>❄️ Cold Chain Tech ($5,000)</h3>
+                        <p>Reduces decay rate by 20% across all deliveries. Essential for perishables and long-distance routes.</p>
+                        
+                        <h3>☀️ Solar Processing Hub ($8,000)</h3>
+                        <p>Increases processing value multiplier by 1.5x. Turn milk into cheese for 2.25x the original value!</p>
+                        
+                        <h3>🔗 Blockchain Traceability ($12,000)</h3>
+                        <p>Adds a 30% "Transparency Bonus" to all deliveries. Premium buyers pay extra for verified supply chains.</p>
+                        
+                        <h3>📦 Micro-Fulfillment Center ($6,000)</h3>
+                        <p>Increases fleet speed by 20%. Faster deliveries mean fresher goods and better ratings.</p>
+                        
+                        <div class="info-box success">
+                            <strong>🎯 Upgrade Strategy:</strong> Start with Cold Chain Tech to reduce losses, then Blockchain for premium bonuses. Save Solar Hub for mid-game when you're processing regularly.
+                        </div>
+                    </div>
+                    
+                    <!-- Carbon Credits -->
+                    <div class="guide-section">
+                        <h2>🌱 Carbon Credits & Sustainability</h2>
+                        <p>In 2026, you're taxed on emissions. Using eco-friendly options earns tradeable credits:</p>
+                        
+                        <ul class="guide-list">
+                            <li><strong>EV vehicles</strong> earn 1 credit per 10km traveled</li>
+                            <li><strong>Optimized routes</strong> (10% shorter) earn bonus credits</li>
+                            <li>Credits can be traded for cash or used to offset expansion costs</li>
+                            <li>Green Subsidy events give +50 bonus credits</li>
+                        </ul>
+                        
+                        <div class="info-box">
+                            <strong>💡 Green is Good:</strong> Despite slower speed, the Cryo-EV Truck generates passive income through carbon credits while preserving freshness. Win-win!
+                        </div>
+                    </div>
+                    
+                    <!-- Advanced Strategies -->
+                    <div class="guide-section">
+                        <h2>🎓 Advanced Strategies</h2>
+                        
+                        <h3>The Golden Triangle</h3>
+                        <p>Success requires balancing three pillars:</p>
+                        <ul class="guide-list">
+                            <li><strong>Efficiency:</strong> Fast deliveries, optimized routes, high vehicle utilization</li>
+                            <li><strong>Quality:</strong> Maintaining freshness above 80%, high ratings, premium buyers</li>
+                            <li><strong>Sustainability:</strong> EV usage, carbon credits, green upgrades</li>
+                        </ul>
+                        
+                        <h3>Contract Selection Tips</h3>
+                        <ul class="guide-list">
+                            <li>Higher decay crops (strawberries) should be paired with Cryo-EV or done quickly with drone</li>
+                            <li>Long-distance contracts are worth more but risk spoilage</li>
+                            <li>Process raw materials before dispatching for instant value boost</li>
+                            <li>During price spike events, prioritize affected crops (e.g., soy during vegan festival)</li>
+                        </ul>
+                        
+                        <h3>Fleet Optimization</h3>
+                        <ul class="guide-list">
+                            <li>Don't leave vehicles idle - accept multiple contracts and queue deliveries</li>
+                            <li>Short contracts with drone, medium with van, long with EV truck</li>
+                            <li>During heat waves, use ALL fast options to beat increased decay</li>
+                        </ul>
+                        
+                        <div class="info-box warning">
+                            <strong>⚠️ Common Mistakes:</strong>
+                            <ul class="guide-list">
+                                <li>Using the drone for long distances (decay ruins profit)</li>
+                                <li>Ignoring freshness timers (spoiled goods tank your rating)</li>
+                                <li>Not processing when available (leaving money on the table)</li>
+                                <li>Buying upgrades too early (need cash flow first)</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Technical Info -->
+                    <div class="guide-section">
+                        <h2>🖥️ Technical Information</h2>
+                        
+                        <h3>Platform Compatibility</h3>
+                        <ul class="guide-list">
+                            <li><strong>PC/Desktop:</strong> Full 3-column layout with detailed stats</li>
+                            <li><strong>Mobile/Tablet:</strong> Optimized single-column touch interface</li>
+                            <li><strong>Browser:</strong> Works in all modern browsers (Chrome, Firefox, Safari, Edge)</li>
+                        </ul>
+                        
+                        <h3>Controls</h3>
+                        <ul class="guide-list">
+                            <li><strong>Mouse/Touch:</strong> Click/tap on contracts and vehicles to select</li>
+                            <li><strong>Buttons:</strong> Accept, Dispatch, and Process actions</li>
+                            <li><strong>Upgrades:</strong> Click/tap upgrade cards to purchase</li>
+                            <li><strong>Manual:</strong> Click 📖 MANUAL button anytime to view this guide</li>
+                        </ul>
+                        
+                        <h3>Game Saves</h3>
+                        <p>Currently, Market-to-Fork runs in your browser session. Your progress resets when you close or refresh the page. Play strategically to maximize your score in each session!</p>
+                    </div>
+                    
+                    <!-- Tips & Tricks -->
+                    <div class="guide-section">
+                        <h2>💎 Pro Tips & Tricks</h2>
+                        
+                        <ul class="guide-list">
+                            <li><strong>Watch the clock:</strong> Freshness decays in real-time. Don't let contracts sit too long!</li>
+                            <li><strong>Process strategically:</strong> Processing adds no delivery time, so it's always worth it when available</li>
+                            <li><strong>Carbon arbitrage:</strong> Long EV deliveries earn more credits than short ones - factor this into route selection</li>
+                            <li><strong>Rating protection:</strong> If freshness is dropping, dispatch immediately even with slower vehicles</li>
+                            <li><strong>Event timing:</strong> Save high-value contracts for beneficial events (price spikes, subsidies)</li>
+                            <li><strong>Upgrade order matters:</strong> Cold Chain → Blockchain → Micro Center → Solar Hub for optimal progression</li>
+                            <li><strong>Vehicle rotation:</strong> Keep all three vehicles busy to maximize throughput</li>
+                            <li><strong>Premium focus:</strong> Once you have 4+ stars, focus on high-value premium contracts</li>
+                        </ul>
+                        
+                        <div class="info-box success">
+                            <strong>🏆 Ultimate Goal:</strong> Reach 5-star rating with $50,000+ cash and all upgrades purchased. This unlocks "Supply Chain Tycoon" status!
+                        </div>
+                    </div>
+                    
+                    <!-- Footer -->
+                    <div class="guide-section">
+                        <h2>📞 Need Help?</h2>
+                        <p>Remember: The bridge between farm and table depends on YOU. Coordinate, process, deliver - before the clock runs out!</p>
+                        <p style="text-align: center; margin-top: 2rem; color: var(--accent-cyan); font-family: 'Orbitron', sans-serif;">
+                            <strong>Good luck, Supply Chain Manager! 🚛💨</strong>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="farmingGame.js"></script>
+</body>
+</html>

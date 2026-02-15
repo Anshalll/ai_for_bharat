@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI for Bharat - Crop Price Advisor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Noto+Sans+Tamil:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    @import url("index.css");
+  </style>
+</head>
+<body>
+
+<div class="app">
+  <!-- HEADER -->
+  <div class="header">
+    <div class="location">
+      <span class="pin">📍</span>
+      <span class="loc-text" data-i18n="location"></span>
+    </div>
+
+    <div class="lang-btn" id="langBtn" tabindex="0" role="button" onclick="toggleDrawer()">
+      <span class="globe">🌐</span>
+      <span class="lang-code" id="langCode">हिन्दी</span>
+      <span class="chevron">▼</span>
+    </div>
+
+    <a href="farmingGame.html" class="game-icon" title="Play Supply Chain Game">
+      🎮
+    </a>
+
+    <div class="toggle-wrap" onclick="toggleTheme()" tabindex="0" role="button">
+      <div class="toggle-track">
+        <div class="t-star t-star-1"></div>
+        <div class="t-star t-star-2"></div>
+        <div class="t-star t-star-3"></div>
+        <div class="t-cloud t-cloud-1"></div>
+        <div class="t-cloud t-cloud-2"></div>
+        <div class="toggle-knob">
+          <span class="icon-sun">☀️</span>
+          <span class="icon-moon">🌙</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-label" data-i18n="heroLabel"></div>
+    <h1 class="hero-title" data-i18n-html="heroTitle"></h1>
+    <p class="hero-sub" data-i18n="heroSub"></p>
+  </div>
+
+  <!-- CROP NAVIGATION -->
+  <div class="crop-nav" id="cropNav" style="display: none;">
+    <div class="crop-nav-container" id="cropNavContainer"></div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div id="mainContent">
+    <div class="loading">
+      <div class="loading-spinner"></div>
+      <div data-i18n="loading"></div>
+    </div>
+  </div>
+
+  <!-- DISCLAIMER -->
+  <div class="disclaimer" id="disclaimer" style="display: none;">
+    <span data-i18n="disclaimer"></span>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div data-i18n="project"></div>
+  </div>
+</div>
+
+<!-- LANGUAGE DRAWER -->
+<div class="lang-overlay" id="langOverlay" onclick="closeDrawer()"></div>
+<div class="lang-drawer" id="langDrawer">
+  <div class="drawer-handle"></div>
+  <div class="drawer-title" data-i18n="chooseLang"></div>
+  <div class="lang-list" id="langList"></div>
+</div>
+
+<script src="index.js"></script>
+</body>
+</html>
