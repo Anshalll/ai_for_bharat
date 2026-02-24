@@ -13,7 +13,7 @@ The platform analyzes historical mandi (market) price data (Kaggle + Agmarknet d
 
 This project was built for the **AI for Bharat Hackathon (Powered by AWS).**
 
-🌐 Live Demo: http://13.201.19.252
+🌐 Live Demo: http://13.201.19.252/
 
 ---
 
