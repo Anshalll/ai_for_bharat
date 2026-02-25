@@ -1,17 +1,13 @@
+
+
+import numpy as np
 import pandas as pd
 import warnings
 from prophet import Prophet
-import boto3
 
 warnings.filterwarnings('ignore')
 
-
-s3 = boto3.client("s3")
-
-obj = s3.get_object(Bucket="wavely-bucket", Key="data/Agriculture_price_dataset.csv")
-df = pd.read_csv(obj["Body"])
-
-
+df = pd.read_csv('Agriculture_price_dataset.csv')
 df.head()
 
 df.info()
@@ -22,7 +18,9 @@ df.describe()
 
 df.isnull().sum()
 
+print(df.columns.tolist())
 
+# 1. Clean column names
 
 df.columns = (
     df.columns
@@ -108,10 +106,28 @@ onion_df = df_scoped[df_scoped["crop"] == "onion"].copy()
 wheat_df = df_scoped[df_scoped["crop"] == "wheat"].copy()
 potato_df = df_scoped[df_scoped["crop"] == "potato"].copy()
 
+# 9. Confirm final datasets
 
+print("Final Scoped Dataset Shape:", df_scoped.shape)
+
+print("\nOnion Dataset Shape:", onion_df.shape)
+print(onion_df.head())
+
+print("\nWheat Dataset Shape:", wheat_df.shape)
+print(wheat_df.head())
+
+print("\nPotato Dataset Shape:", potato_df.shape)
+print(potato_df.head())
 
 """**EDA**"""
 
+# Basic info
+print(df_scoped.info())
+
+# Check unique values
+print("\nCrops:", df_scoped["crop"].unique())
+print("States:", df_scoped["state"].unique())
+print("Markets:", df_scoped["market"].unique())
 
 records_per_series = (
     df_scoped
@@ -121,7 +137,7 @@ records_per_series = (
     .sort_values("records", ascending=False)
 )
 
-
+print(records_per_series)
 
 date_coverage = (
     df_scoped
@@ -134,6 +150,7 @@ date_coverage = (
     .reset_index()
 )
 
+print(date_coverage)
 
 def missing_date_check(df):
     full_range = pd.date_range(df["date"].min(), df["date"].max(), freq="D")
@@ -147,6 +164,7 @@ missing_summary = (
     .reset_index(name="missing_days")
 )
 
+print(missing_summary)
 
 price_check = (
     df_scoped
@@ -158,6 +176,7 @@ price_check = (
     .reset_index()
 )
 
+print(price_check)
 
 df_scoped = df_scoped.sort_values(["crop", "state", "market", "date"])
 
@@ -239,7 +258,7 @@ for (crop, state, market), group_df in grouped:
 
         forecast_results.append(forecast_df)
 
-
+        print(f"Model trained successfully for {crop} | {market}, {state}")
 
     except Exception as e:
         print(f"Skipped {crop} | {market}, {state} — Reason: {e}")
@@ -251,39 +270,55 @@ final_forecast_df = final_forecast_df.sort_values(
     ["crop", "state", "market", "ds"]
 )
 
+print("\nFinal Forecast Data Shape:", final_forecast_df.shape)
+print(final_forecast_df.head())
+
+
 
 def predict_next_7_days(df):
     """
-    Generates next 7 days daily price prediction
-    using a conservative baseline approach.
+    Generates next 7 days daily price prediction using a
+    Trend-Based Baseline to avoid flat lines.
     """
-
     results = []
-
     grouped = df.groupby(["crop", "state", "market"])
 
     for (crop, state, market), group_df in grouped:
-        # Ensure sorted data
         group_df = group_df.sort_values("date")
 
-        # Get last known price
+        # 1. Get the last known price and date
         last_date = group_df["date"].max()
         last_price = group_df.loc[group_df["date"] == last_date, "price"].iloc[0]
 
-        # Create next 7 days
+        # 2. Calculate a simple trend (Change over last 5 records)
+        # If we have at least 2 records, calculate daily change; else change is 0
+        if len(group_df) > 1:
+            recent_data = group_df.tail(5)
+            # Simple linear trend: (last - first) / number of steps
+            total_change = recent_data['price'].iloc[-1] - recent_data['price'].iloc[0]
+            daily_trend = total_change / len(recent_data)
+        else:
+            daily_trend = 0
+
+        # 3. Create next 7 days with trend applied
         future_dates = pd.date_range(
             start=last_date + pd.Timedelta(days=1),
             periods=7,
             freq="D"
         )
 
-        for d in future_dates:
+        for i, d in enumerate(future_dates, 1):
+            # Apply the trend: Price = last_price + (trend * days_out)
+            # We add a tiny bit of random noise (0.1%) for visual realism
+            noise = np.random.uniform(-0.001, 0.001) * last_price
+            prediction = last_price + (daily_trend * i) + noise
+
             results.append({
                 "date": d,
-                "predicted_price": last_price,
-                "lower_bound": last_price * 0.95,
-                "upper_bound": last_price * 1.05,
-                "model_used": "baseline",
+                "predicted_price": round(prediction, 2),
+                "lower_bound": round(prediction * 0.95, 2),
+                "upper_bound": round(prediction * 1.05, 2),
+                "model_used": "trend_baseline",
                 "crop": crop,
                 "state": state,
                 "market": market
@@ -291,7 +326,13 @@ def predict_next_7_days(df):
 
     return pd.DataFrame(results)
 
+# Re-run the prediction
 next_7_day_predictions = predict_next_7_days(df_scoped)
+
+next_7_day_predictions = predict_next_7_days(df_scoped)
+
+print(next_7_day_predictions.head())
+print("\nShape:", next_7_day_predictions.shape)
 
 
 def compare_mandies(predictions_df):
@@ -328,6 +369,7 @@ def compare_mandies(predictions_df):
 
 mandi_comparison = compare_mandies(next_7_day_predictions)
 
+print(mandi_comparison)
 
 def recommend_best_market(mandi_comparison_df):
     """
@@ -354,7 +396,7 @@ def recommend_best_market(mandi_comparison_df):
 
 best_market_recommendations = recommend_best_market(mandi_comparison)
 
-
+print(best_market_recommendations)
 
 def generate_simple_explanation(df):
     """
@@ -397,6 +439,10 @@ def generate_simple_explanation(df):
 
 explanation_df = generate_simple_explanation(best_market_recommendations)
 
+print(explanation_df[["crop", "english_explanation", "hindi_explanation"]])
+
+print(explanation_df.loc[0, "english_explanation"])
+print(explanation_df.loc[0, "hindi_explanation"])
 
 def build_api_response(predictions_df, best_market_df, explanation_df):
     """
@@ -460,14 +506,11 @@ def build_api_response(predictions_df, best_market_df, explanation_df):
         })
 
     return response
-
-
-
 def get_api_response():
     api_response = build_api_response(
-    next_7_day_predictions,
-    best_market_recommendations,
-    explanation_df
-)
-
+        next_7_day_predictions,
+        best_market_recommendations,
+        explanation_df
+    )
     return api_response
+
